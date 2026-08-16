@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+
+# Large / generated artifacts (regenerate via scripts instead of committing)
+# Comment these out if you want data/model checkpoints tracked in git.
+# data/*.csv
+# models/*.joblib
+# models/*.keras
+# models/*.tflite
