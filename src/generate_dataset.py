@@ -141,8 +141,12 @@ def generate_dataset(n_samples=N_SAMPLES, conc_range=CONC_RANGE_MGL, rng=rng):
 
 
 if __name__ == "__main__":
+    import os
+
     df = generate_dataset()
-    out_path = "synthetic_fluorescence_dataset.csv"
+    out_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, "synthetic_fluorescence_dataset.csv")
     df.to_csv(out_path, index=False)
     print(f"Generated {len(df)} samples -> {out_path}")
     print(df.describe())
