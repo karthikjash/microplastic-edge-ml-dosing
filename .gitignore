@@ -1,19 +1,41 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+.Python
+
+# Virtual environments
 .venv/
 venv/
+env/
+ENV/
 
-# Editors
+# Jupyter
+.ipynb_checkpoints/
+
+# Editors / IDEs
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # OS
 .DS_Store
+Thumbs.db
 
-# Large / generated artifacts (regenerate via scripts instead of committing)
-# Comment these out if you want data/model checkpoints tracked in git.
+# TensorFlow / training artifacts
+*.log
+logs/
+checkpoints/
+
+# Environment / secrets
+.env
+*.pem
+*.key
+
+# Large generated artifacts (optional - uncomment if you'd rather
+# regenerate these locally instead of committing them)
 # data/*.csv
 # models/*.joblib
 # models/*.keras
