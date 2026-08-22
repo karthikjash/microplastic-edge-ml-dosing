@@ -40,6 +40,9 @@ SCALER_B_PATH = os.path.join(MODELS_DIR, "dosing_scaler.joblib")
 
 FEATURE_NAMES_A = ["peak_intensity", "mean_intensity", "rise_time", "decay_time", "energy"]
 
+# Calibrated range Model A was trained on (data/generate_dataset.py CONC_RANGE_MGL)
+CONTAMINATION_RANGE_MGL = (0.0, 100.0)
+
 
 def load_models():
     model_a = tf.keras.models.load_model(MODEL_A_PATH)
@@ -54,8 +57,13 @@ def run_pipeline(model_a, scaler_a, model_b, scaler_b, raw_features):
     # --- Model A: features -> contamination ---
     x_a = np.array([raw_features], dtype=np.float32)
     x_a_scaled = scaler_a.transform(x_a).astype(np.float32)
-    contamination = float(model_a.predict(x_a_scaled, verbose=0).flatten()[0])
-    contamination = max(contamination, 0.0)  # concentration can't be negative
+    contamination_raw = float(model_a.predict(x_a_scaled, verbose=0).flatten()[0])
+    contamination_raw = max(contamination_raw, 0.0)  # concentration can't be negative
+
+    # --- Flag + clip out-of-calibrated-range predictions ---
+    lo, hi = CONTAMINATION_RANGE_MGL
+    out_of_range = contamination_raw > hi or contamination_raw < lo
+    contamination = min(max(contamination_raw, lo), hi)
 
     # --- Model B: contamination -> dose ---
     x_b = np.array([[contamination]], dtype=np.float32)
@@ -63,12 +71,15 @@ def run_pipeline(model_a, scaler_a, model_b, scaler_b, raw_features):
     dose = float(model_b.predict(x_b_scaled, verbose=0).flatten()[0])
     dose = max(dose, 0.0)  # dose can't be negative
 
-    return contamination, dose
+    return contamination_raw, contamination, dose, out_of_range
 
 
-def print_result(raw_features, contamination, dose, label=""):
+def print_result(raw_features, contamination_raw, contamination, dose, out_of_range, label=""):
     print(f"\n{label}" if label else "")
     print(f"  Input features        : {dict(zip(FEATURE_NAMES_A, raw_features))}")
+    if out_of_range:
+        print(f"  [!] WARNING: raw prediction {contamination_raw:.2f} mg/L is outside the "
+              f"calibrated range {CONTAMINATION_RANGE_MGL} - clipped, treat as approximate.")
     print(f"  -> Predicted contamination : {contamination:.2f} mg/L")
     print(f"  -> Recommended Substance X dose : {dose:.2f} mg/L")
 
@@ -80,8 +91,10 @@ def interactive_mode(model_a, scaler_a, model_b, scaler_b):
         val = float(input(f"  {name}: "))
         raw_features.append(val)
 
-    contamination, dose = run_pipeline(model_a, scaler_a, model_b, scaler_b, raw_features)
-    print_result(raw_features, contamination, dose, label="Pipeline result:")
+    contamination_raw, contamination, dose, out_of_range = run_pipeline(
+        model_a, scaler_a, model_b, scaler_b, raw_features
+    )
+    print_result(raw_features, contamination_raw, contamination, dose, out_of_range, label="Pipeline result:")
 
 
 def csv_mode(model_a, scaler_a, model_b, scaler_b, csv_path):
@@ -94,10 +107,18 @@ def csv_mode(model_a, scaler_a, model_b, scaler_b, csv_path):
     results = []
     for i, row in df.iterrows():
         raw_features = [row[c] for c in FEATURE_NAMES_A]
-        contamination, dose = run_pipeline(model_a, scaler_a, model_b, scaler_b, raw_features)
-        print_result(raw_features, contamination, dose, label=f"Row {i}:")
+        contamination_raw, contamination, dose, out_of_range = run_pipeline(
+            model_a, scaler_a, model_b, scaler_b, raw_features
+        )
+        print_result(raw_features, contamination_raw, contamination, dose, out_of_range, label=f"Row {i}:")
         results.append(
-            {"row": i, "predicted_contamination_mgl": contamination, "recommended_dose_mgl": dose}
+            {
+                "row": i,
+                "predicted_contamination_raw_mgl": contamination_raw,
+                "predicted_contamination_mgl": contamination,
+                "recommended_dose_mgl": dose,
+                "out_of_calibrated_range": out_of_range,
+            }
         )
 
     out_path = os.path.join(os.path.dirname(csv_path), "pipeline_results.csv")
@@ -121,8 +142,10 @@ def main():
         csv_mode(model_a, scaler_a, model_b, scaler_b, args.csv)
     elif all(v is not None for v in [args.peak, args.mean, args.rise, args.decay, args.energy]):
         raw_features = [args.peak, args.mean, args.rise, args.decay, args.energy]
-        contamination, dose = run_pipeline(model_a, scaler_a, model_b, scaler_b, raw_features)
-        print_result(raw_features, contamination, dose, label="CLI input result:")
+        contamination_raw, contamination, dose, out_of_range = run_pipeline(
+            model_a, scaler_a, model_b, scaler_b, raw_features
+        )
+        print_result(raw_features, contamination_raw, contamination, dose, out_of_range, label="CLI input result:")
     else:
         interactive_mode(model_a, scaler_a, model_b, scaler_b)
 
