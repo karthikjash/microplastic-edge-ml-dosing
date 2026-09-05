@@ -20,6 +20,16 @@ ENV/
 *.swp
 *.swo
 
+# Embedded build output
+build/
+cmake-build-*/
+
+# Firmware binaries
+*.elf
+*.map
+*.bin
+*.hex
+
 # OS
 .DS_Store
 Thumbs.db

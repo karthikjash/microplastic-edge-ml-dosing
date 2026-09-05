@@ -1,36 +1,63 @@
-# Intelligent Microplastic Detection and Magnetic Separation System
+# FRDM-MCXN236 microplastic fluorescence ML firmware
 
-Fluorescence sensing + edge ML microplastic detection and dosing-calibrated
-separation system, targeting the **FRDM-MCXN236** (dual Cortex-M33, onboard
-eIQ Neutron NPU).
+This firmware implements the reduced scope: a 525 nm excitation experiment,
+LED-off/LED-on background subtraction, five fluorescence features, StandardScaler
+preprocessing, and Model A (`models/nn_baseline_int8.tflite`) using TensorFlow
+Lite Micro on the single Cortex-M33 CPU. It does not implement separation,
+dosing, networking, display, or any actuator.
 
-## Project structure
+## Hardware
 
-microplastic_project/
-├── data/                      # datasets (synthetic for now, real later)
-│   └── synthetic_fluorescence_dataset.csv
-├── src/                       # all source code
-│   ├── generate_dataset.py    # synthetic fluorescence pulse simulator + feature extraction
-│   └── train_baseline.py      # baseline model training (Linear, RF, small NN)
-├── models/                    # trained model artifacts (generated)
-├── results/                   # metrics, plots (generated)
-├── notebooks/                 # exploratory notebooks (optional)
-├── requirements.txt
-└── README.md
+* Target: FRDM-MCXN236 / MCXN236.
+* ADC: `ADC0_A2`, board J8 pin 12, configured by the SDK LPADC polling example.
+* ADC conversion: the SDK's configured LPADC reference is used; the current
+  application converts the 12-bit result to volts using 3.3 V as the board
+  reference assumption. Confirm the fitted board reference before quantitative
+  calibration.
+* LED: approximately 525 nm green LED with a project-specific GPIO still
+  pending. The firmware keeps LED control behind an abstraction and does not
+  guess a GPIO.
+* Sensor: BPW34 and MCP6002 output must stay within the ADC input range.
+* Serial: onboard MCU-Link VCOM, 115200 8-N-1, no flow control.
 
-## Setup
+The ML data is synthetic and is not a Rhodamine-B or real-sensor calibration.
 
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+## Build
 
-## Usage
+From the repository root, using the installed MCUXpresso SDK:
 
-# 1. Generate the synthetic dataset (5 features -> concentration_mgl)
-python3 src/generate_dataset.py
+```powershell
+cmake -S . -B build -G Ninja `
+  -DSdkRootDirPath=C:\NXP\mcuxsdk\mcuxsdk `
+  -Dboard=frdmmcxn236 `
+  -DCMAKE_BUILD_TYPE=debug
+cmake --build build
+```
 
-# 2. Train baseline models (Linear Regression, Random Forest, small Keras NN)
-python3 src/train_baseline.py
+`MICROPLASTIC_TEST_MODE` defaults to `ON`. Set
+`-DMICROPLASTIC_TEST_MODE=OFF` for ADC capture. The current 5 kHz pacing is
+software-paced polling (250 samples, 200 us target interval); a timer-triggered
+LPADC configuration remains pending if cycle-level timing is required.
 
-Outputs land in results/ (metrics.json, prediction plots, training curves)
-and models/ (saved model files).
+## Test mode and output
+
+Test mode generates a fluorescence-like waveform and runs the complete
+waveform -> features -> scaler -> int8 Model A path. Output is labelled
+`TEST MODE`; it is not real sensor validation. Real mode performs 250 LED-off
+samples followed by 250 LED-on samples and clips negative subtraction to zero.
+
+The selected model's input/output types and quantization parameters are read
+from its tensors at runtime. The tensor arena is currently 8 KiB and the build
+must validate whether that is sufficient.
+
+## Flash
+
+Use the MCUXpresso for VS Code LinkServer runner for `frdmmcxn236` (onboard
+MCU-Link). A board/LinkServer connection is not available in this workspace, so
+flash and terminal output remain pending.
+
+## Measurements pending
+
+Flash/RAM usage, actual tensor arena high-water mark, inference latency, ADC
+reference confirmation, LED GPIO assignment, and real BPW34/Rhodamine-B
+validation require the physical board and circuit.

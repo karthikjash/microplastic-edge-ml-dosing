@@ -34,7 +34,7 @@ static const float FEATURE_SCALE[NUM_FEATURES] = {
     0.0042734623118885215f   // energy
 };
 
-static inline void scale_features(float raw_features[NUM_FEATURES],
+static inline void scale_features(const float raw_features[NUM_FEATURES],
                                    float scaled_features[NUM_FEATURES]) {
     for (int i = 0; i < NUM_FEATURES; i++) {
         scaled_features[i] = (raw_features[i] - FEATURE_MEAN[i]) / FEATURE_SCALE[i];
