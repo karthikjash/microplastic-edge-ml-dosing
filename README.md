@@ -65,6 +65,23 @@ The selected model's input/output types and quantization parameters are read
 from its tensors at runtime. The tensor arena is currently 8 KiB and the build
 must validate whether that is sufficient.
 
+## Hardware raw-data collection
+
+The firmware telemetry build emits one signal sample per line using:
+
+```text
+RAW,<sample_index>,<timestamp_ms>,<adc_counts>,<voltage_v>,signal
+DATA,<peak>,<mean>,<rise_time_ms>,<decay_time_ms>,<pulse_energy>
+```
+
+The existing verified ADC mapping remains ADC0 channel 2 (`ADC0_A2`, J8 pin 12). LED control is deliberately disabled until the optical assembly GPIO is confirmed in `source/hardware_config.h`. After installing `requirements.txt`, build with `MICROPLASTIC_TEST_MODE=OFF`, `MICROPLASTIC_INTERACTIVE_TEST=OFF`, and `MICROPLASTIC_RAW_STREAM=ON`, then collect 250 samples with:
+
+```bash
+python3 scripts/raw_data_collector.py --port /dev/ttyACM0 --samples 250
+```
+
+The collector writes `data/raw_fluorescence_data.csv` with columns `sample_id`, `timestamp_ms`, `raw_adc`, `voltage_v`, and `pulse_stage`.
+
 ## Flash
 
 Use the MCUXpresso for VS Code LinkServer runner for `frdmmcxn236` (onboard

@@ -3,9 +3,12 @@
 
 #include "feature_extraction.h"
 
-// The LED GPIO is intentionally not guessed. Set this abstraction to the
-// project-specific GPIO after the optical assembly pin is assigned.
-constexpr bool kLedControlAvailable = false;
+#include <cstdint>
+
+struct RawAdcSample {
+    uint32_t adc_counts;
+    float voltage;
+};
 
 void SensorAcquisition_Init();
 bool CaptureBackgroundAndSignal(float corrected_waveform[kCaptureSamples]);

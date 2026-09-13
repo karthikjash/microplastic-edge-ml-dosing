@@ -13,6 +13,16 @@ extern unsigned int models_nn_baseline_int8_tflite_len;
 extern "C" void BOARD_InitHardware(void);
 
 namespace {
+void PrintCsvFloat(float value)
+{
+    int32_t scaled = static_cast<int32_t>(value * 1000000.0f);
+    const bool negative = scaled < 0;
+    if (negative) scaled = -scaled;
+    PRINTF("%s%d.%06d", negative ? "-" : "",
+           static_cast<int>(scaled / 1000000),
+           static_cast<int>(scaled % 1000000));
+}
+
 void PrintFixed(const char *label, float value)
 {
     int32_t scaled = static_cast<int32_t>(value * 10000.0f);
@@ -81,6 +91,10 @@ extern "C" void UsageFault_Handler(void)
 
 #ifndef MICROPLASTIC_INTERACTIVE_TEST
 #define MICROPLASTIC_INTERACTIVE_TEST 1
+#endif
+
+#ifndef MICROPLASTIC_RAW_STREAM
+#define MICROPLASTIC_RAW_STREAM 0
 #endif
 
 static bool ParseFeature(const char **cursor, float *value)
@@ -280,6 +294,19 @@ int main(void)
     PrintFixed("TEST: rise=", features.rise_time);
     PrintFixed("TEST: decay=", features.decay_time);
     PrintFixed("TEST: energy=", features.energy);
+#if MICROPLASTIC_RAW_STREAM
+    PRINTF("DATA,");
+    PrintCsvFloat(features.peak_intensity);
+    PRINTF(",");
+    PrintCsvFloat(features.mean_intensity);
+    PRINTF(",");
+    PrintCsvFloat(features.rise_time * 1000.0f);
+    PRINTF(",");
+    PrintCsvFloat(features.decay_time * 1000.0f);
+    PRINTF(",");
+    PrintCsvFloat(features.energy);
+    PRINTF("\r\n");
+#endif
     InferenceResult result = {};
     PRINTF("TEST: scaler started\r\n");
     PRINTF("TEST: model initialization started\r\n");

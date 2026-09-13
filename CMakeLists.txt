@@ -8,6 +8,7 @@ project(microplastic_ml LANGUAGES C CXX ASM
 option(MICROPLASTIC_TEST_MODE "Run the synthetic waveform/model test instead of ADC capture" ON)
 option(MICROPLASTIC_INTERACTIVE_TEST "Read five Model A features from the serial console" ON)
 option(MICROPLASTIC_DEBUG_ADC "Print ADC diagnostics" OFF)
+option(MICROPLASTIC_RAW_STREAM "Emit RAW and DATA CSV telemetry" OFF)
 
 mcux_add_include(
     INCLUDES
@@ -50,6 +51,12 @@ endif()
 
 if(MICROPLASTIC_DEBUG_ADC)
     mcux_add_macro(CX "-DMICROPLASTIC_DEBUG_ADC=1")
+endif()
+
+if(MICROPLASTIC_RAW_STREAM)
+    mcux_add_macro(CX "-DMICROPLASTIC_RAW_STREAM=1")
+else()
+    mcux_add_macro(CX "-DMICROPLASTIC_RAW_STREAM=0")
 endif()
 
 include(${SdkRootDirPath}/CMakeLists.txt)
