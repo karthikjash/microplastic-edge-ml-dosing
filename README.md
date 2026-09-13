@@ -6,6 +6,7 @@ preprocessing, and Model A (`models/nn_baseline_int8.tflite`) using TensorFlow
 Lite Micro on the single Cortex-M33 CPU. It does not implement separation,
 dosing, networking, display, or any actuator.
 
+
 ## Hardware
 
 * Target: FRDM-MCXN236 / MCXN236.
