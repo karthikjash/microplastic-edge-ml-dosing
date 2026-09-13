@@ -19,6 +19,36 @@ dosing, networking, display, or any actuator.
   guess a GPIO.
 * Sensor: BPW34 and MCP6002 output must stay within the ADC input range.
 * Serial: onboard MCU-Link VCOM, 115200 8-N-1, no flow control.
+### TIA output-range and feedback design
+
+The analog front end must be designed for the ADC, rather than treating the ADC range as the TIA specification. For the present 3.3 V single-ended ADC, use this initial design envelope:
+
+* dark/offset output: **0.10 V nominal** (allow 0.05-0.20 V after trimming);
+* maximum fluorescence output: **2.90 V**;
+* absolute output limit: **0.0-3.3 V** (never rely on the op-amp reaching either rail).
+
+This gives approximately 2.8 V of usable signal swing and about 0.806 mV per 12-bit ADC count at a 3.3 V reference. The envelope is provisional until the maximum BPW34 photocurrent is measured with the intended LED, optics, and sample. The firmware currently assumes a 3.3 V conversion reference; confirm the actual LPADC reference before final calibration.
+
+For a transimpedance stage, select the feedback resistor from the measured or worst-case peak photocurrent:
+
+```text
+Rf <= (Vout_max - Vdark) / Iphoto_peak
+Vout = Vdark + Iphoto * Rf
+```
+
+With the design envelope above, the available signal swing is 2.8 V. The 10 kOhm feedback resistor shown in the hardware integration document therefore supports up to approximately 280 uA peak current, but may be too insensitive if the actual signal is only a few uA. For example, if the measured peak is 100 uA, a suitable first-pass value is **27 kOhm**:
+
+```text
+0.10 V + (100 uA * 27 kOhm) = 2.80 V
+```
+
+The feedback capacitor, Cf, is for TIA stability and noise control; it is not chosen from the ADC resolution. First estimate the total inverting-node capacitance, `Cin = BPW34 capacitance + op-amp input capacitance + PCB parasitics`, and use the op-amp data-sheet stability equation:
+
+```text
+Cf >= sqrt(Cin / (2*pi*Rf*GBW))
+```
+
+For a BPW34/TLC271 implementation with approximately 70-100 pF total input capacitance, **4.7 pF** is a reasonable starting value with `Rf = 27 kOhm`; populate a footprint that also permits 10 pF and 22 pF, then verify the step response and noise on the assembled board. The final Cf must be checked with the actual photodiode bias, layout, op-amp supply, and required measurement bandwidth. Do not treat 10 kOhm/4.7 pF or 27 kOhm/4.7 pF as validated values until the peak current and oscilloscope waveform have been measured.
 
 The ML data is synthetic and is not a Rhodamine-B or real-sensor calibration.
 
